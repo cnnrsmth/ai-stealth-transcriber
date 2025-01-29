@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Live Transcription</title>
+
+    <!-- Bootstrap CSS -->
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css"
+    />
+
+    <!-- Some extra styling -->
+    <style>
+      body {
+        background: linear-gradient(135deg, #ece9e6, #ffffff);
+        min-height: 100vh;
+        display: flex;
+        flex-direction: column;
+      }
+      .transcription-container {
+        font-size: 1.2rem;
+        line-height: 1.5;
+        white-space: pre-wrap; /* Keep multiple spaces, line breaks, etc. */
+      }
+      .navbar-brand {
+        font-weight: 600;
+      }
+      .footer-text {
+        font-size: 0.85rem;
+        color: #666;
+      }
+      .listening-badge {
+        font-size: 0.8rem;
+        margin-left: 10px;
+        background-color: #28a745;
+      }
+    </style>
+  </head>
+  <body>
+    <!-- NAVBAR -->
+    <nav class="navbar navbar-light bg-light shadow-sm">
+      <div class="container">
+        <a class="navbar-brand" href="#">
+          <img
+            src="https://cdn-icons-png.flaticon.com/512/3594/3594171.png"
+            width="30"
+            height="30"
+            class="d-inline-block align-top"
+            alt="mic icon"
+          />
+          AI Live Transcriber
+        </a>
+        <span class="badge bg-success listening-badge">Listening...</span>
+      </div>
+    </nav>
+
+    <!-- MAIN CONTENT -->
+    <div class="container my-5">
+      <div class="row justify-content-center">
+        <div class="col-lg-8 col-md-10">
+          <div class="card shadow-sm">
+            <div class="card-header bg-primary text-white">
+              <h5 class="mb-0">Real-Time Speech-to-Text</h5>
+            </div>
+            <div class="card-body transcription-container">
+              <p id="transcript" class="mb-0" style="min-height: 150px">
+                Loading...
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- FOOTER -->
+    <footer class="mt-auto py-3 bg-light">
+      <div class="container text-center">
+        <span class="footer-text"
+          >Powered by
+          <a href="https://alphacephei.com/vosk" target="_blank">Vosk</a> &
+          Flask-SocketIO</span
+        >
+      </div>
+    </footer>
+
+    <!-- Socket.IO client (4.x) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
+
+    <!-- Your client logic -->
+    <script>
+      // Connect to server
+      const socket = io();
+
+      // Grab the transcript element
+      const transcriptElement = document.getElementById("transcript");
+
+      // Listen for "transcription" events
+      socket.on("transcription", function (data) {
+        transcriptElement.textContent = data.text;
+      });
+    </script>
+  </body>
+</html>
