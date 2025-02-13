@@ -3,102 +3,487 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Live Transcription</title>
-
-    <!-- Bootstrap CSS -->
+    <title>Stealth Transcriber</title>
+    <link
+      rel="icon"
+      type="image/svg+xml"
+      href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA1MTIgNTEyIj48cGF0aCBmaWxsPSIjZmZmIiBkPSJNMjU2IDQ4QzE0MS4xIDQ4IDQ4IDE0MS4xIDQ4IDI1NnM5My4xIDIwOCAyMDggMjA4IDIwOC05My4xIDIwOC0yMDhTMzcwLjkgNDggMjU2IDQ4em0wIDM3MmMtOTAuNSAwLTE2NC0xMjQuNS0xNjQtMTY4czczLjUtMTY0IDE2NC0xNjQgMTY0IDEyNC41IDE2NCAxNjQtNzMuNSAxNjQtMTY4IDE2NHoiLz48L3N2Zz4="
+    />
     <link
       rel="stylesheet"
       href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css"
     />
-
-    <!-- Some extra styling -->
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
+    />
     <style>
+      :root {
+        --bg-dark: #040d21;
+        --bg-gradient: radial-gradient(
+          circle at 0 0,
+          rgba(2, 13, 41, 1) 0%,
+          var(--bg-dark) 50%
+        );
+        --text-primary: rgba(248, 250, 252, 0.75);
+        --text-title: rgba(248, 250, 252, 0.85);
+        --text-muted: rgba(148, 163, 184, 0.7);
+        --card-bg: rgba(255, 255, 255, 0.05);
+        --border-color: rgba(255, 255, 255, 0.1);
+        --button-bg: rgba(255, 255, 255, 0.05);
+        --button-hover: rgba(255, 255, 255, 0.08);
+      }
+
+      @keyframes pulse {
+        0% {
+          background-color: var(--button-bg);
+        }
+        50% {
+          background-color: var(--button-hover);
+        }
+        100% {
+          background-color: var(--button-bg);
+        }
+      }
+
+      @keyframes shimmer {
+        0% {
+          background-position: -1000px 0;
+        }
+        100% {
+          background-position: 1000px 0;
+        }
+      }
+
+      @keyframes rotate {
+        from {
+          transform: rotate(0deg);
+        }
+        to {
+          transform: rotate(360deg);
+        }
+      }
+
       body {
-        background: linear-gradient(135deg, #ece9e6, #ffffff);
+        background: var(--bg-dark);
+        background-image: var(--bg-gradient);
+        color: var(--text-primary);
         min-height: 100vh;
         display: flex;
+        align-items: center;
+        justify-content: center;
+        font-family: "Inter", -apple-system, BlinkMacSystemFont, sans-serif;
+      }
+
+      .app-container {
+        width: 100%;
+        max-width: 800px;
+        padding: 2rem;
+        position: relative;
+      }
+
+      .app-header {
+        display: flex;
         flex-direction: column;
+        margin-bottom: 2.5rem;
+        width: 100%;
       }
-      .transcription-container {
-        font-size: 1.2rem;
-        line-height: 1.5;
-        white-space: pre-wrap; /* Keep multiple spaces, line breaks, etc. */
+
+      .app-title-wrapper {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        margin-bottom: 0.5rem;
+        position: relative;
       }
-      .navbar-brand {
+
+      .app-title {
+        font-size: 1.75rem;
         font-weight: 600;
+        letter-spacing: -0.02em;
+        color: var(--text-title);
+        margin: 0;
       }
-      .footer-text {
-        font-size: 0.85rem;
-        color: #666;
+
+      .info-toggle {
+        background: none;
+        border: none;
+        padding: 0;
+        margin-left: 0.5rem;
+        cursor: pointer;
+        opacity: 0.6;
+        transition: all 0.2s ease;
       }
-      .listening-badge {
-        font-size: 0.8rem;
-        margin-left: 10px;
-        background-color: #28a745;
+
+      .info-toggle:hover {
+        opacity: 1;
+      }
+
+      .info-toggle svg {
+        width: 18px;
+        height: 18px;
+        color: var(--text-muted);
+      }
+
+      .subtitle-wrapper {
+        max-height: 0;
+        overflow: hidden;
+        transition: all 0.3s ease;
+        opacity: 0;
+        transform: translateY(-10px);
+      }
+
+      .subtitle-wrapper.expanded {
+        max-height: 200px;
+        opacity: 1;
+        transform: translateY(0);
+        margin-bottom: 1rem;
+      }
+
+      .app-subtitle {
+        color: var(--text-muted);
+        font-size: 1rem;
+        line-height: 1.7;
+        margin: 0;
+        padding: 0.5rem 0;
+      }
+
+      .ninja-icon {
+        width: 32px;
+        height: 32px;
+        transition: all 0.3s ease;
+        opacity: 0.9;
+      }
+
+      .ninja-icon.recording {
+        animation: rotate 10s infinite linear;
+      }
+
+      .transcript-actions {
+        position: absolute;
+        top: 1rem;
+        right: 1rem;
+        display: flex;
+        gap: 0.75rem;
+      }
+
+      .action-btn {
+        width: 32px;
+        height: 32px;
+        background: rgba(255, 255, 255, 0.05);
+        border: none;
+        padding: 0;
+        color: var(--text-primary);
+        cursor: pointer;
+        position: relative;
+        border-radius: 50%;
+        transition: all 0.2s ease;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        opacity: 0.7;
+      }
+
+      .action-btn:hover {
+        background: rgba(255, 255, 255, 0.1);
+        opacity: 1;
+      }
+
+      .action-btn svg {
+        width: 16px;
+        height: 16px;
+        pointer-events: none;
+      }
+
+      .tooltip {
+        position: absolute;
+        bottom: -2rem;
+        left: 50%;
+        transform: translateX(-50%);
+        background: rgba(0, 0, 0, 0.8);
+        color: white;
+        padding: 0.25rem 0.5rem;
+        border-radius: 0.25rem;
+        font-size: 0.75rem;
+        white-space: nowrap;
+        opacity: 0;
+        visibility: hidden;
+        transition: all 0.2s ease;
+      }
+
+      .action-btn:hover .tooltip {
+        opacity: 1;
+        visibility: visible;
+      }
+
+      .transcript-container {
+        background: var(--card-bg);
+        border: 1px solid var(--border-color);
+        border-radius: 1rem;
+        padding: 1.75rem;
+        margin-bottom: 1.5rem;
+        backdrop-filter: blur(10px);
+        min-height: 300px;
+        font-size: 1.1rem;
+        line-height: 1.6;
+        transition: all 0.2s ease;
+        position: relative;
+      }
+
+      .transcript-container:focus-within {
+        border-color: rgba(255, 255, 255, 0.2);
+        box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.05);
+      }
+
+      .control-btn {
+        width: 100%;
+        background: var(--button-bg);
+        color: var(--text-primary);
+        border: none;
+        padding: 1rem;
+        border-radius: 0.75rem;
+        font-weight: 500;
+        font-size: 1rem;
+        letter-spacing: -0.01em;
+        transition: all 0.3s ease;
+        position: relative;
+        overflow: hidden;
+        backdrop-filter: blur(10px);
+      }
+
+      .control-btn::before {
+        content: "";
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: linear-gradient(
+          90deg,
+          transparent,
+          rgba(255, 255, 255, 0.05),
+          transparent
+        );
+        transform: translateX(-100%);
+      }
+
+      .control-btn:hover {
+        background: var(--button-hover);
+      }
+
+      .control-btn.recording {
+        animation: pulse 3s infinite ease-in-out;
+      }
+
+      .control-btn.recording::before {
+        animation: shimmer 3s infinite linear;
+      }
+
+      .status-badge {
+        position: absolute;
+        top: 2rem;
+        right: 2rem;
+        font-size: 0.875rem;
+        padding: 0.5rem 1rem;
+        border-radius: 2rem;
+        background: rgba(239, 68, 68, 0.08);
+        color: rgba(239, 68, 68, 0.9);
+        font-weight: 500;
+        letter-spacing: -0.01em;
+      }
+
+      .status-badge.listening {
+        background: rgba(34, 197, 94, 0.08);
+        color: rgba(34, 197, 94, 0.9);
+      }
+
+      #transcript {
+        color: var(--text-primary);
+        opacity: 0.9;
+        margin: 0;
+      }
+
+      #transcript:empty::before {
+        content: 'Click "Start Listening" to begin transcription...';
+        color: var(--text-muted);
+      }
+
+      @media (max-width: 768px) {
+        .app-container {
+          padding: 1.5rem;
+        }
+
+        .transcript-container {
+          min-height: 200px;
+        }
+
+        .app-header {
+          margin-bottom: 2rem;
+        }
       }
     </style>
   </head>
   <body>
-    <!-- NAVBAR -->
-    <nav class="navbar navbar-light bg-light shadow-sm">
-      <div class="container">
-        <a class="navbar-brand" href="#">
-          <img
-            src="https://cdn-icons-png.flaticon.com/512/3594/3594171.png"
-            width="30"
-            height="30"
-            class="d-inline-block align-top"
-            alt="mic icon"
-          />
-          AI Live Transcriber
-        </a>
-        <span class="badge bg-success listening-badge">Listening...</span>
-      </div>
-    </nav>
-
-    <!-- MAIN CONTENT -->
-    <div class="container my-5">
-      <div class="row justify-content-center">
-        <div class="col-lg-8 col-md-10">
-          <div class="card shadow-sm">
-            <div class="card-header bg-primary text-white">
-              <h5 class="mb-0">Real-Time Speech-to-Text</h5>
-            </div>
-            <div class="card-body transcription-container">
-              <p id="transcript" class="mb-0" style="min-height: 150px">
-                Loading...
-              </p>
-            </div>
-          </div>
+    <div class="app-container">
+      <header class="app-header">
+        <div class="app-title-wrapper">
+          <svg class="ninja-icon" viewBox="0 0 512 512" id="ninja-icon">
+            <path
+              fill="currentColor"
+              d="M256 48C141.1 48 48 141.1 48 256s93.1 208 208 208 208-93.1 208-208S370.9 48 256 48zm0 372c-90.5 0-164-124.5-164-168s73.5-164 164-164 164 124.5 164 168-73.5 164-168 164z"
+            />
+          </svg>
+          <h1 class="app-title">Stealth Transcriber</h1>
+          <button
+            class="info-toggle"
+            id="info-toggle"
+            aria-label="Show description"
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <circle cx="12" cy="12" r="10"></circle>
+              <line x1="12" y1="16" x2="12" y2="12"></line>
+              <line x1="12" y1="8" x2="12.01" y2="8"></line>
+            </svg>
+          </button>
         </div>
-      </div>
+        <div class="subtitle-wrapper" id="subtitle-wrapper">
+          <p class="app-subtitle">
+            Capture meeting notes and conversations discreetly, without the
+            intrusion of AI agents or obvious recording tools. Perfect for
+            seamless documentation while maintaining natural conversation flow.
+          </p>
+        </div>
+      </header>
+
+      <main>
+        <div class="transcript-container">
+          <div class="transcript-actions">
+            <button class="action-btn" id="copy-btn" aria-label="Copy text">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                <path
+                  d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"
+                ></path>
+              </svg>
+              <span class="tooltip">Copy</span>
+            </button>
+            <button class="action-btn" id="clear-btn" aria-label="Clear text">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <path d="M3 6h18"></path>
+                <path
+                  d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"
+                ></path>
+              </svg>
+              <span class="tooltip">Clear</span>
+            </button>
+          </div>
+          <p id="transcript"></p>
+        </div>
+
+        <button id="control-btn" class="control-btn">Start Listening</button>
+
+        <span class="status-badge stopped" id="status-badge">Stopped</span>
+      </main>
     </div>
 
-    <!-- FOOTER -->
-    <footer class="mt-auto py-3 bg-light">
-      <div class="container text-center">
-        <span class="footer-text"
-          >Powered by
-          <a href="https://alphacephei.com/vosk" target="_blank">Vosk</a> &
-          Flask-SocketIO</span
-        >
-      </div>
-    </footer>
-
-    <!-- Socket.IO client (4.x) -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
 
-    <!-- Your client logic -->
     <script>
-      // Connect to server
       const socket = io();
-
-      // Grab the transcript element
       const transcriptElement = document.getElementById("transcript");
+      const controlBtn = document.getElementById("control-btn");
+      const statusBadge = document.getElementById("status-badge");
+      const ninjaIcon = document.getElementById("ninja-icon");
+      const copyBtn = document.getElementById("copy-btn");
+      const clearBtn = document.getElementById("clear-btn");
+      let isListening = false;
 
-      // Listen for "transcription" events
+      // Copy functionality
+      copyBtn.addEventListener("click", async function () {
+        const text = transcriptElement.textContent;
+        if (text) {
+          try {
+            await navigator.clipboard.writeText(text);
+            const tooltip = this.querySelector(".tooltip");
+            tooltip.textContent = "Copied!";
+            setTimeout(() => {
+              tooltip.textContent = "Copy";
+            }, 2000);
+          } catch (err) {
+            console.error("Failed to copy text:", err);
+          }
+        }
+      });
+
+      // Clear functionality
+      clearBtn.addEventListener("click", function () {
+        transcriptElement.textContent = "";
+      });
+
+      controlBtn.addEventListener("click", function () {
+        isListening = !isListening;
+        if (isListening) {
+          socket.emit("start_transcription");
+          controlBtn.textContent = "Stop Listening";
+          controlBtn.classList.add("recording");
+          statusBadge.textContent = "Listening";
+          statusBadge.classList.remove("stopped");
+          statusBadge.classList.add("listening");
+          ninjaIcon.classList.add("recording");
+          transcriptElement.textContent = "";
+        } else {
+          socket.emit("stop_transcription");
+          controlBtn.textContent = "Start Listening";
+          controlBtn.classList.remove("recording");
+          statusBadge.textContent = "Stopped";
+          statusBadge.classList.remove("listening");
+          statusBadge.classList.add("stopped");
+          ninjaIcon.classList.remove("recording");
+        }
+      });
+
       socket.on("transcription", function (data) {
-        transcriptElement.textContent = data.text;
+        if (isListening) {
+          transcriptElement.textContent = data.text;
+        }
+      });
+
+      // Info toggle functionality
+      const infoToggle = document.getElementById("info-toggle");
+      const subtitleWrapper = document.getElementById("subtitle-wrapper");
+
+      infoToggle.addEventListener("click", function () {
+        subtitleWrapper.classList.toggle("expanded");
+        this.setAttribute(
+          "aria-label",
+          subtitleWrapper.classList.contains("expanded")
+            ? "Hide description"
+            : "Show description"
+        );
       });
     </script>
   </body>
