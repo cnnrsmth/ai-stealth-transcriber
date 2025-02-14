@@ -1,14 +1,20 @@
 #!/usr/bin/env bash
-set -eux  # Exit on error, print commands
+set -eux  # Exit on error, print each command
 
-# Update package lists and install required system libraries
-apt-get update && apt-get install -y \
+# Ensure package lists are updated
+apt-get update
+
+# Install system dependencies needed for sounddevice
+apt-get install -y \
     portaudio19-dev \
     libasound2-dev \
     libffi-dev \
     python3-dev \
-    gcc
+    gcc \
+    libportaudio2 \
+    libportaudiocpp0
 
-# Upgrade pip and install Python dependencies
-pip install --upgrade pip
-pip install -r requirements.txt
+# Force reinstallation of sounddevice after installing system dependencies
+pip install --no-cache-dir --upgrade pip
+pip install --no-cache-dir --force-reinstall sounddevice
+pip install --no-cache-dir -r requirements.txt
