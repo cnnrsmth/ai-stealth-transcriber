@@ -1,3 +1,6 @@
+pip
+setuptools
+wheel
 av==14.1.0
 bidict==0.23.1
 blinker==1.9.0
@@ -52,3 +55,4 @@ Werkzeug==2.3.8
 wsproto==1.2.0
 zope.event==5.0
 zope.interface==7.2
+pyaudio
