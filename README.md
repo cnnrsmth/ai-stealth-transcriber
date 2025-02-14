@@ -2,7 +2,7 @@
 
 ### **Try it:** [ai-stealth-transcriber.onrender.com](https://ai-stealth-transcriber.onrender.com/)
 
-^it's moved to a free tier - there's insufficient compute to run the AI model. But you can poke around the UI!
+^it's moved to a free tier - there's often insufficient compute to run the AI model, which may result in non-performant transcription. But you can poke around the UI!
 
 A web-based real-time speech-to-text transcriber powered by **Vosk + Flask + WebSockets**.
 
