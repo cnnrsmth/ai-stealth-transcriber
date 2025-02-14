@@ -6,6 +6,7 @@ import json
 import sounddevice as sd
 import vosk
 import threading
+import os
 import time
 
 # Initialize Flask app & WebSockets
@@ -104,4 +105,5 @@ def handle_stop_transcription():
         print("Transcription stopped")
 
 if __name__ == "__main__":
+    port = int(os.environ.get("PORT", 10000))  # Use Render's PORT or default to 10000
     socketio.run(app, host="0.0.0.0", port=8080, debug=True)
