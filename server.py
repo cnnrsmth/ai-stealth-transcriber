@@ -3,7 +3,6 @@ from flask_socketio import SocketIO
 from flask_cors import CORS
 import queue
 import json
-import sounddevice as sd
 import vosk
 import threading
 import os
@@ -22,15 +21,7 @@ if not os.path.exists(model_path):
 model = vosk.Model(model_path)
 
 # Audio setup
-try:
-    device_info = sd.query_devices(None, 'input')
-    device_index = device_info['index']  # Use default input device
-    samplerate = int(device_info['default_samplerate'])
-except Exception as e:
-    print(f"Error setting up audio device: {e}")
-    device_index = None  # Will use system default
-    samplerate = 16000
-
+samplerate = 16000  # Fixed sample rate for client audio
 blocksize = 4000
 q = queue.Queue()
 printed_words = []
@@ -38,7 +29,6 @@ partial_text = ""
 
 # Control flags
 is_transcribing = False
-audio_stream = None
 transcription_thread = None
 
 @app.route("/")
@@ -65,7 +55,7 @@ def transcribe_audio():
     Process audio data from the client and run Vosk recognition
     """
     global printed_words, partial_text, is_transcribing
-    recognizer = vosk.KaldiRecognizer(model, 16000)  # Fixed sample rate to match client
+    recognizer = vosk.KaldiRecognizer(model, samplerate)  # Fixed sample rate to match client
     printed_words = []  # Reset words when starting new session
     partial_text = ""
     processed_chunks = 0  # Debug counter
@@ -113,7 +103,7 @@ def handle_start_transcription():
 
 @socketio.on("stop_transcription")
 def handle_stop_transcription():
-    global is_transcribing, audio_stream, transcription_thread
+    global is_transcribing, transcription_thread
     if is_transcribing:
         is_transcribing = False
         # Clear the queue
@@ -128,7 +118,6 @@ if __name__ == "__main__":
     
     print(f"Starting server on port {port}")
     print(f"Debug mode: {debug}")
-    print(f"Audio device index: {device_index}")
     print(f"Sample rate: {samplerate}")
     
     socketio.run(app, host=host, port=port, debug=debug)

@@ -510,14 +510,31 @@
       let audioContext;
       let audioStream;
 
+      // Check if we're on HTTPS or localhost
+      const isSecureContext = window.isSecureContext;
+      const isLocalhost =
+        window.location.hostname === "localhost" ||
+        window.location.hostname === "127.0.0.1" ||
+        window.location.hostname.includes("192.168.");
+
       async function setupAudio() {
         try {
+          // Check if we're in a secure context
+          if (!isSecureContext && !isLocalhost) {
+            throw new Error("Microphone access requires HTTPS or localhost");
+          }
+
+          // Request microphone with specific constraints
           const stream = await navigator.mediaDevices.getUserMedia({
             audio: {
               channelCount: 1,
               sampleRate: 16000,
+              echoCancellation: true,
+              noiseSuppression: true,
+              autoGainControl: true,
             },
           });
+
           audioStream = stream;
           audioContext = new AudioContext({ sampleRate: 16000 });
           const source = audioContext.createMediaStreamSource(stream);
@@ -539,11 +556,20 @@
               socket.emit("audio_data", int16Data);
             }
           };
+
+          return true;
         } catch (err) {
           console.error("Error accessing microphone:", err);
-          alert(
-            "Failed to access microphone. Please ensure microphone permissions are granted."
-          );
+          if (!isSecureContext && !isLocalhost) {
+            alert(
+              "Microphone access requires HTTPS. Please use a secure connection."
+            );
+          } else {
+            alert(
+              "Failed to access microphone. Please ensure microphone permissions are granted and try again."
+            );
+          }
+          return false;
         }
       }
 
@@ -631,12 +657,13 @@
         if (!isListening) {
           // Request microphone access when starting
           if (!audioContext) {
-            await setupAudio();
+            const success = await setupAudio();
+            if (!success) {
+              return; // Don't proceed if microphone setup failed
+            }
           }
-        }
 
-        isListening = !isListening;
-        if (isListening) {
+          isListening = true;
           socket.emit("start_transcription");
           controlBtn.textContent = "Stop Listening";
           controlBtn.classList.add("recording");
@@ -649,6 +676,7 @@
             .querySelector(".transcript-container")
             .classList.add("recording");
         } else {
+          isListening = false;
           socket.emit("stop_transcription");
           controlBtn.textContent = "Start Listening";
           controlBtn.classList.remove("recording");
@@ -659,6 +687,16 @@
           document
             .querySelector(".transcript-container")
             .classList.remove("recording");
+
+          // Stop the microphone stream
+          if (audioStream) {
+            audioStream.getTracks().forEach((track) => track.stop());
+            audioStream = null;
+          }
+          if (audioContext) {
+            await audioContext.close();
+            audioContext = null;
+          }
         }
       });
 

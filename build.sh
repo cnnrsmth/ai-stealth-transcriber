@@ -12,6 +12,7 @@ apt-get update && apt-get install -y \
     gcc \
     libportaudio2 \
     libportaudiocpp0 \
+    portaudio19-dev \
     wget \
     unzip
 
