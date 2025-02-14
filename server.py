@@ -11,7 +11,17 @@ import time
 # Initialize Flask app & WebSockets
 app = Flask(__name__)
 CORS(app)  # Allow all origins in development
-socketio = SocketIO(app, cors_allowed_origins="*", async_mode="threading")
+
+# Configure SocketIO with production settings
+socketio = SocketIO(
+    app,
+    cors_allowed_origins="*",
+    async_mode="gevent",
+    ping_timeout=60,
+    ping_interval=25,
+    logger=True,
+    engineio_logger=True
+)
 
 # Load Vosk Model
 model_path = "models/vosk-model-small-en-us-0.15"
@@ -34,6 +44,14 @@ transcription_thread = None
 @app.route("/")
 def index():
     return render_template("index.html")
+
+@socketio.on('connect')
+def handle_connect():
+    print("Client connected")
+
+@socketio.on('disconnect')
+def handle_disconnect():
+    print("Client disconnected")
 
 @socketio.on('audio_data')
 def handle_audio_data(data):

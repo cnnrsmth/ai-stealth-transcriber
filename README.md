@@ -23,4 +23,6 @@ A web-based real-time speech-to-text transcriber powered by **Vosk + Flask + Web
 - **Backend**: Flask, Flask-SocketIO
 - **Speech Recognition**: Vosk
 
+[![Watch the Demo](https://cdn.loom.com/sessions/thumbnails/640ec177611b4fb1a41b05d3515d5d8b-9456bb35e6b0f33f-full-play.gif)](https://www.loom.com/share/640ec177611b4fb1a41b05d3515d5d8b)
+
 🚀 **Start transcribing now:** [ai-stealth-transcriber.onrender.com](https://ai-stealth-transcriber.onrender.com/)
