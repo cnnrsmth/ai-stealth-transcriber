@@ -1,9 +1,14 @@
 #!/usr/bin/env bash
-set -eux  # Exit on error, print each command
+set -eux  # Exit on error, print commands
 
-# Install system dependencies, including PortAudio
-apt-get update && apt-get install -y portaudio19-dev
+# Update package lists and install required system libraries
+apt-get update && apt-get install -y \
+    portaudio19-dev \
+    libasound2-dev \
+    libffi-dev \
+    python3-dev \
+    gcc
 
-# Install Python dependencies
+# Upgrade pip and install Python dependencies
 pip install --upgrade pip
 pip install -r requirements.txt
