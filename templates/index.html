@@ -837,6 +837,21 @@
         }
       });
 
+      // Copy functionality
+      copyBtn.addEventListener("click", function () {
+        if (!this.classList.contains("disabled")) {
+          navigator.clipboard
+            .writeText(transcriptElement.textContent)
+            .then(() => {
+              const tooltip = this.querySelector(".tooltip");
+              tooltip.textContent = "Copied!";
+              setTimeout(() => {
+                tooltip.textContent = "Copy";
+              }, 2000);
+            });
+        }
+      });
+
       controlBtn.addEventListener("click", async function () {
         if (!isListening) {
           // Request microphone access when starting
