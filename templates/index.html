@@ -505,6 +505,48 @@
       const clearBtn = document.getElementById("clear-btn");
       let isListening = false;
 
+      // Add audio handling
+      let mediaRecorder;
+      let audioContext;
+      let audioStream;
+
+      async function setupAudio() {
+        try {
+          const stream = await navigator.mediaDevices.getUserMedia({
+            audio: {
+              channelCount: 1,
+              sampleRate: 16000,
+            },
+          });
+          audioStream = stream;
+          audioContext = new AudioContext({ sampleRate: 16000 });
+          const source = audioContext.createMediaStreamSource(stream);
+
+          // Create a processor node to handle audio data
+          const processor = audioContext.createScriptProcessor(4096, 1, 1);
+          source.connect(processor);
+          processor.connect(audioContext.destination);
+
+          processor.onaudioprocess = function (e) {
+            if (isListening) {
+              const inputData = e.inputBuffer.getChannelData(0);
+              // Convert float32 to int16
+              const int16Data = new Int16Array(inputData.length);
+              for (let i = 0; i < inputData.length; i++) {
+                const s = Math.max(-1, Math.min(1, inputData[i]));
+                int16Data[i] = s < 0 ? s * 0x8000 : s * 0x7fff;
+              }
+              socket.emit("audio_data", int16Data);
+            }
+          };
+        } catch (err) {
+          console.error("Error accessing microphone:", err);
+          alert(
+            "Failed to access microphone. Please ensure microphone permissions are granted."
+          );
+        }
+      }
+
       // Copy functionality
       copyBtn.addEventListener("click", async function () {
         const text = transcriptElement.textContent;
@@ -585,7 +627,14 @@
         }
       });
 
-      controlBtn.addEventListener("click", function () {
+      controlBtn.addEventListener("click", async function () {
+        if (!isListening) {
+          // Request microphone access when starting
+          if (!audioContext) {
+            await setupAudio();
+          }
+        }
+
         isListening = !isListening;
         if (isListening) {
           socket.emit("start_transcription");

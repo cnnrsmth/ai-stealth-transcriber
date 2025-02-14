@@ -11,16 +11,26 @@ import time
 
 # Initialize Flask app & WebSockets
 app = Flask(__name__)
-CORS(app)  # Enable CORS
+CORS(app)  # Allow all origins in development
 socketio = SocketIO(app, cors_allowed_origins="*", async_mode="threading")
 
 # Load Vosk Model
 model_path = "models/vosk-model-small-en-us-0.15"
+if not os.path.exists(model_path):
+    raise RuntimeError(f"Please download the model from https://alphacephei.com/vosk/models and unpack as {model_path}")
+
 model = vosk.Model(model_path)
 
 # Audio setup
-device_index = 2  # Change based on sd.query_devices()
-samplerate = 16000
+try:
+    device_info = sd.query_devices(None, 'input')
+    device_index = device_info['index']  # Use default input device
+    samplerate = int(device_info['default_samplerate'])
+except Exception as e:
+    print(f"Error setting up audio device: {e}")
+    device_index = None  # Will use system default
+    samplerate = 16000
+
 blocksize = 4000
 q = queue.Queue()
 printed_words = []
@@ -35,55 +45,62 @@ transcription_thread = None
 def index():
     return render_template("index.html")
 
+@socketio.on('audio_data')
+def handle_audio_data(data):
+    if not is_transcribing:
+        return
+        
+    try:
+        # Convert the received data to bytes
+        audio_data = bytes(data)
+        print(f"Received audio data length: {len(audio_data)} bytes")  # Debug log
+        q.put(audio_data)
+    except Exception as e:
+        print(f"Error processing audio data: {e}")
+        print(f"Data type received: {type(data)}")  # Debug log
+        print(f"Data length: {len(data) if hasattr(data, '__len__') else 'unknown'}")  # Debug log
+
 def transcribe_audio():
     """
-    Continuously reads audio from the microphone,
-    runs Vosk recognition, and emits partial/final transcripts.
+    Process audio data from the client and run Vosk recognition
     """
-    global printed_words, partial_text, is_transcribing, audio_stream
-    recognizer = vosk.KaldiRecognizer(model, samplerate)
+    global printed_words, partial_text, is_transcribing
+    recognizer = vosk.KaldiRecognizer(model, 16000)  # Fixed sample rate to match client
     printed_words = []  # Reset words when starting new session
     partial_text = ""
+    processed_chunks = 0  # Debug counter
 
-    def callback(indata, frames, time, status):
-        if status:
-            print(status)
-        if is_transcribing:  # Only process audio when transcribing is active
-            q.put(bytes(indata))
+    while is_transcribing:
+        try:
+            data = q.get(timeout=0.5)
+            processed_chunks += 1  # Increment counter
+            if processed_chunks % 10 == 0:  # Log every 10th chunk
+                print(f"Processed {processed_chunks} audio chunks")
+            
+            if recognizer.AcceptWaveform(data):
+                result = json.loads(recognizer.Result())["text"]
+                if result:
+                    print(f"Recognition result: {result}")  # Debug log
+                    new_words = result.split()
+                    printed_words.extend(new_words)
+                    final_text = " ".join(printed_words)
+                    socketio.emit("transcription", {"text": final_text})
+            else:
+                partial_result = json.loads(recognizer.PartialResult())["partial"]
+                if partial_result and partial_result != partial_text:
+                    print(f"Partial result: {partial_result}")  # Debug log
+                    socketio.emit("transcription",
+                                {"text": " ".join(printed_words) + " " + partial_result})
+                    partial_text = partial_result
+        except queue.Empty:
+            continue
+        except Exception as e:
+            print(f"Error in transcription: {e}")
+            print(f"Error details: {str(e)}")
+            print(f"Data length that caused error: {len(data) if 'data' in locals() else 'unknown'}")  # Debug log
+            continue
 
-    # Start audio input stream
-    with sd.RawInputStream(
-        samplerate=samplerate,
-        blocksize=blocksize,
-        device=device_index,
-        dtype="int16",
-        channels=1,
-        callback=callback
-    ) as stream:
-        audio_stream = stream
-        print("Audio stream started.")
-
-        while is_transcribing:
-            try:
-                data = q.get(timeout=0.5)  # Add timeout to allow checking is_transcribing
-                if recognizer.AcceptWaveform(data):
-                    result = json.loads(recognizer.Result())["text"]
-                    if result:
-                        new_words = result.split()
-                        printed_words.extend(new_words)
-                        final_text = " ".join(printed_words)
-                        socketio.emit("transcription", {"text": final_text}, namespace="/")
-                else:
-                    partial_result = json.loads(recognizer.PartialResult())["partial"]
-                    if partial_result and partial_result != partial_text:
-                        socketio.emit("transcription",
-                                    {"text": " ".join(printed_words) + " " + partial_result},
-                                    namespace="/")
-                        partial_text = partial_result
-            except queue.Empty:
-                continue  # No data available, continue checking is_transcribing
-
-        print("Transcription stopped.")
+    print("Transcription stopped.")
 
 @socketio.on("start_transcription")
 def handle_start_transcription():
@@ -105,5 +122,13 @@ def handle_stop_transcription():
         print("Transcription stopped")
 
 if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 10000))  # Use Render's PORT or default to 10000
-    socketio.run(app, host="0.0.0.0", port=8080, debug=True)
+    port = int(os.environ.get("PORT", 10000))
+    debug = os.environ.get("FLASK_ENV") == "development"
+    host = "0.0.0.0"
+    
+    print(f"Starting server on port {port}")
+    print(f"Debug mode: {debug}")
+    print(f"Audio device index: {device_index}")
+    print(f"Sample rate: {samplerate}")
+    
+    socketio.run(app, host=host, port=port, debug=debug)
